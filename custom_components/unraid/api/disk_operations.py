@@ -525,14 +525,6 @@ class DiskOperationsMixin:
                             # Remove '%' from capacity
                             capacity = capacity.rstrip('%')
 
-                            result = await self.execute_command(f"zfs list -Hp {name}")
-                            if result.exit_status == 0:                                
-                                parts = result.stdout.split('\t')                      
-                                alloc = parts[1]   # used                              
-                                free = parts[2]    # avail                             
-                                size = str(int(free) + int(alloc))                     
-                                capacity = round((int(alloc) / int(size)) * 100)       
-
                             zfs_pools[name] = {
                                 'name': name,
                                 'size': size,
@@ -601,13 +593,6 @@ class DiskOperationsMixin:
                                 is_zfs_pool = True
                                 _LOGGER.debug(f"Detected {disk_name} as ZFS pool")
 
-                                result = await self.execute_command(f"zfs list -Hp {disk_name}")
-                                if result.exit_status == 0:                         
-                                    parts = result.stdout.split('\t')               
-                                    used = parts[1]                                 
-                                    free = parts[2]                                 
-                                    total = str(int(total) + int(used))             
-                        
                         # Get current disk state
                         state = await self._state_manager.get_disk_state(disk_name)
                         _LOGGER.debug("Disk %s state from DiskStateManager: %s", disk_name, state.value)
