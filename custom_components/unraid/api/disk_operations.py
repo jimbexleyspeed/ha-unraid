@@ -420,7 +420,7 @@ class DiskOperationsMixin:
                 "echo '===DISK_USAGE==='; "
                 "df -P -B1 /mnt/disk[0-9]* /mnt/user* 2>/dev/null | grep -v '^Filesystem' | awk '{print $6,$2,$3,$4}'; "
                 # Get all cache pools (including those with special characters)
-                "mount | grep -E '/mnt/' | grep -v -E '(fuse\\.shfs|/var/lib/docker|/etc/libvirt)' | grep -v -E '/mnt/(disk[0-9]+|user[0-9]*|disks|remotes|addons|rootshare)' | awk '{print $3}' | while read mount_point; do "
+                "mount | grep -E '/mnt/' | grep -v -E '(fuse\\.shfs|/var/lib/docker|/etc/libvirt|type zfs)' | grep -v -E '/mnt/(disk[0-9]+|user[0-9]*|disks|remotes|addons|rootshare)' | awk '{print $3}' | while read mount_point; do "
                 "  if [ -d \"$mount_point\" ] && mountpoint -q \"$mount_point\"; then "
                 "    df -P -B1 \"$mount_point\" 2>/dev/null | grep -v '^Filesystem' | awk '{print $6,$2,$3,$4}'; "
                 "  fi; "
@@ -524,6 +524,7 @@ class DiskOperationsMixin:
                             name, size, alloc, free, capacity, health = parts
                             # Remove '%' from capacity
                             capacity = capacity.rstrip('%')
+
                             zfs_pools[name] = {
                                 'name': name,
                                 'size': size,
@@ -802,6 +803,14 @@ class DiskOperationsMixin:
                                         capacity_str = parts[4].rstrip('%')
                                         health_str = parts[5]
 
+                                        result = await self.execute_command(f"zfs list -Hp {pool_name}") 
+                                        if result.exit_status == 0:                                      
+                                            parts = result.stdout.split('\t')                            
+                                            alloc_str = parts[1]   # used                                
+                                            free_str = parts[2]    # avail                               
+                                            size_str = str(int(free_str) + int(alloc_str))               
+                                            capacity_str = str(round((int(alloc_str) / int(size_str)) * 100))
+                                        
                                         # Parse size values
                                         total_bytes = self._parse_size_string(size_str)
                                         used_bytes = self._parse_size_string(alloc_str)
